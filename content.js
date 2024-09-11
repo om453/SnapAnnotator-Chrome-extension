@@ -6,6 +6,8 @@ let lastX = 0;
 let lastY = 0;
 let initialScreenshot;
 
+let isAnnotating = false;
+
 function createAnnotationCanvas(screenshotUrl) {
   // Remove existing canvas if any
   if (annotationCanvas) {
@@ -151,23 +153,48 @@ function showAnnotationTools() {
   });
 }
 
+window.addEventListener('beforeunload', () => {
+    if (isAnnotating) {
+        chrome.storage.local.set({isAnnotating: true});
+    }
+});
+
+window.addEventListener('load', () => {
+    chrome.storage.local.get(['isAnnotating'], (result) => {
+        if (result.isAnnotating) {
+            isAnnotating = true;
+            chrome.runtime.sendMessage({action: "captureScreenshot"}, (response) => {
+                if (response && response.screenshotUrl) {
+                    createAnnotationCanvas(response.screenshotUrl);
+                    showAnnotationTools();
+                }
+            });
+        }
+    });
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "initializeAnnotation") {
-      createAnnotationCanvas(request.screenshotUrl);
-      showAnnotationTools();
-      sendResponse({success: true});
-  } else if (request.action === "getAnnotatedScreenshot") {
-      const dataUrl = annotationCanvas.toDataURL('image/png');
-      sendResponse({annotatedScreenshotUrl: dataUrl});
-  } else if (request.action === "cleanupAnnotation") {
-      if (annotationCanvas) {
-          annotationCanvas.remove();
-          annotationCanvas = null;
-      }
-      const toolsDiv = document.getElementById('annotation-tools');
-      if (toolsDiv) {
-          toolsDiv.remove();
-      }
-  }
-  return true;
+    if (request.action === "initializeAnnotation") {
+        isAnnotating = true;
+        createAnnotationCanvas(request.screenshotUrl);
+        showAnnotationTools();
+        sendResponse({success: true});
+    } else if (request.action === "getAnnotatedScreenshot") {
+        const dataUrl = annotationCanvas.toDataURL('image/png');
+        sendResponse({annotatedScreenshotUrl: dataUrl});
+    } else if (request.action === "cleanupAnnotation") {
+        isAnnotating = false;
+        chrome.storage.local.remove('isAnnotating');
+        if (annotationCanvas) {
+            annotationCanvas.remove();
+            annotationCanvas = null;
+        }
+        const toolsDiv = document.getElementById('annotation-tools');
+        if (toolsDiv) {
+            toolsDiv.remove();
+        }
+    } else if (request.action === "checkAnnotationState") {
+        sendResponse({isAnnotating: isAnnotating});
+    }
+    return true;
 });

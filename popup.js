@@ -1,8 +1,15 @@
 let isAnnotating = false;
 
-chrome.storage.local.get(['isAnnotating'], (result) => {
-    isAnnotating = result.isAnnotating || false;
-    updateButtonVisibility();
+chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, {action: "checkAnnotationState"}, (response) => {
+        if (chrome.runtime.lastError) {
+            console.error(chrome.runtime.lastError);
+            isAnnotating = false;
+        } else {
+            isAnnotating = response && response.isAnnotating;
+        }
+        updateButtonVisibility();
+    });
 });
 
 function updateButtonVisibility() {
