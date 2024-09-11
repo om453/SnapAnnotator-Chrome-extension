@@ -153,26 +153,6 @@ function showAnnotationTools() {
   });
 }
 
-window.addEventListener('beforeunload', () => {
-    if (isAnnotating) {
-        chrome.storage.local.set({isAnnotating: true});
-    }
-});
-
-window.addEventListener('load', () => {
-    chrome.storage.local.get(['isAnnotating'], (result) => {
-        if (result.isAnnotating) {
-            isAnnotating = true;
-            chrome.runtime.sendMessage({action: "captureScreenshot"}, (response) => {
-                if (response && response.screenshotUrl) {
-                    createAnnotationCanvas(response.screenshotUrl);
-                    showAnnotationTools();
-                }
-            });
-        }
-    });
-});
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "initializeAnnotation") {
         isAnnotating = true;

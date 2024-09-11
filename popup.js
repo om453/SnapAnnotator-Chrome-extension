@@ -2,11 +2,10 @@ let isAnnotating = false;
 
 chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     chrome.tabs.sendMessage(tabs[0].id, {action: "checkAnnotationState"}, (response) => {
-        if (chrome.runtime.lastError) {
-            console.error(chrome.runtime.lastError);
+        if (chrome.runtime.lastError || !response) {
             isAnnotating = false;
         } else {
-            isAnnotating = response && response.isAnnotating;
+            isAnnotating = response.isAnnotating;
         }
         updateButtonVisibility();
     });
@@ -66,7 +65,6 @@ document.getElementById('saveBtn').addEventListener('click', () => {
                     } else {
                         chrome.tabs.sendMessage(tabs[0].id, {action: "cleanupAnnotation"});
                         isAnnotating = false;
-                        chrome.storage.local.set({isAnnotating: false});
                         updateButtonVisibility();
                     }
                 });
